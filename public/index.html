@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boat Control App</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="top-bar">
+        <div class="status-pill">
+            <span class="indicator" id="ws-dot"></span> SERVER
+        </div>
+        <div class="status-pill">
+            <span class="indicator" id="gamepad-dot"></span> PS4
+        </div>
+        <div class="status-pill gps-pill">
+            GPS: <span id="gps-value">Đang chờ tín hiệu...</span>
+        </div>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="telemetry">
+            <div class="telemetry-item">
+                <span class="label">Khoảng cách</span>
+                <span class="value" id="distance-value">-- <small>m</small></span>
+            </div>
+            <div class="telemetry-item">
+                <span class="label">Độ trễ (Ping)</span>
+                <span class="value" id="ping-value">-- <small>ms</small></span>
+            </div>
+            <div class="telemetry-item">
+                <span class="label">Ga (L2)</span>
+                <span class="value" id="rc-throttle">1000</span>
+            </div>
+            <div class="telemetry-item">
+                <span class="label">Lái (Rx)</span>
+                <span class="value" id="rc-steering">1500</span>
+            </div>
+        </div>
+        <button id="btn-set-home" class="btn-dji">SET HOME POINT</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+/* Reset & Khóa cuộn trang */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+    overflow: hidden; 
+    background-color: #000; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    user-select: none; /* Chống bôi đen text khi chạm nhanh */
+    -webkit-touch-callout: none;
+}
+
+/* Bản đồ toàn màn hình */
+#map { 
+    position: absolute; 
+    top: 0; left: 0; 
+    width: 100vw; height: 100vh; 
+    z-index: 1; 
+}
+
+/* --- OVERLAY LỚP TRÊN --- */
+.top-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    width: 90%;
+    justify-content: center;
+}
+
+.status-pill {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.indicator {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444; /* Đỏ - Mất kết nối */
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.8);
+}
+.indicator.active {
+    background-color: #22c55e; /* Xanh - Đã kết nối */
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.8);
+}
+
+/* --- OVERLAY LỚP DƯỚI --- */
+.bottom-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: 92%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.telemetry {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    color: white;
+}
+
+.telemetry-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.telemetry-item .label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.telemetry-item .value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-family: monospace;
+}
+.telemetry-item small { font-size: 0.7rem; color: #cbd5e1; }
+
+.btn-dji {
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    padding: 14px;
+    border-radius: 30px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    backdrop-filter: blur(5px);
+    transition: all 0.2s ease;
+}
+.btn-dji:active {
+    background: white;
+    color: black;
+    transform: scale(0.98);
+}
+
+/* --- CUSTOM CHẤM XANH LEAFLET --- */
+.boat-blue-dot {
+    background-color: #3b82f6;
+    border: 2.5px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.7);
+}

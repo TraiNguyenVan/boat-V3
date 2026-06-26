@@ -1,0 +1,13 @@
+{
+  "name": "boat-gps-server",
+  "version": "1.0.0",
+  "description": "Hệ thống điều khiển thuyền RC và giám sát GPS thời gian thực",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.16.0"
+  }
+}
