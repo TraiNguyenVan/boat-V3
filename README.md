@@ -16,6 +16,22 @@ Server Node.js cho hệ thống điều khiển thuyền RC và giám sát GPS t
 - ESP32 đã nạp chương trình trong `arduino/esp/esp.ino`.
 - Máy chạy server và ESP32 cần cùng mạng LAN, hoặc ESP32 phải truy cập được tới địa chỉ server.
 
+## Cấu hình môi trường
+
+Server có thể sử dụng biến môi trường `PORT` để thay đổi cổng hoạt động. Bạn có thể sao chép file cấu hình mẫu:
+
+```bash
+cp .env.example .env
+```
+
+Nội dung mẫu trong `.env.example`:
+
+```text
+PORT=3000
+```
+
+Nếu không đặt `PORT`, server sẽ sử dụng giá trị mặc định `3000`.
+
 ## Cài đặt
 
 ```bash
@@ -34,9 +50,11 @@ Mặc định server chạy ở:
 http://localhost:3000
 ```
 
-Nếu muốn đổi cổng:
+Nếu muốn đổi cổng khi chạy trực tiếp:
 
-```bash
+Trên Windows PowerShell:
+
+```powershell
 $env:PORT=8080
 npm start
 ```
@@ -46,6 +64,22 @@ Trên macOS/Linux:
 ```bash
 PORT=8080 npm start
 ```
+
+## Chạy với Docker
+
+Nếu bạn muốn chạy server trong container Docker, docker-compose có thể sử dụng biến `PORT` từ file `.env` hoặc biến môi trường hệ thống.
+
+```bash
+docker compose up --build
+```
+
+Hoặc với Docker Compose cũ:
+
+```bash
+docker-compose up --build
+```
+
+Server sẽ được ánh xạ vào cổng đã cấu hình.
 
 ## Cấu hình ESP32
 
