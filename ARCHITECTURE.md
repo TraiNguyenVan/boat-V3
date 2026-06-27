@@ -60,9 +60,6 @@ The codebase is split cleanly into frontend client, backend relay server, and mi
 
 ```text
 boat-v3/
-├── .agents/                    # AI Coding Agent configs
-│   ├── AGENTS.md               # Project-scoped custom rules (English)
-│   └── GEMINI.md               # Project-scoped Gemini custom rules (English)
 ├── arduino/
 │   └── esp/
 │       └── esp.ino             # ESP32 C++ (Arduino) source code
@@ -105,6 +102,7 @@ boat-v3/
   - Decode telemetry with the `TinyGPSPlus` library.
   - Apply PWM pulse signals to the Speed Controller (ESC) and Steering Servo using the `ESP32Servo` library.
   - Maintain the WebSocket connection, register itself, and publish telemetry packets.
+  - Manage connection state and perform automatic failover switching to the backup server if connection drops consecutively 3 times.
 
 ---
 
@@ -133,6 +131,13 @@ boat-v3/
 ### 6.2. ESC Arming Protocol
 - Electronic Speed Controllers require a startup sequence to avoid immediate motor spins.
 - **Solution**: In `setup()`, the ESP32 writes `1000` (neutral low throttle) to the ESC pin and blocks for 4 seconds using `delay(4000)`. Once the ESC plays a long beep (successful arming validation), the ESP32 proceeds to initialize WiFi and WebSocket connection tasks.
+
+### 6.3. WebSocket Server Failover (Auto-switching)
+- If the primary local server goes offline (e.g. laptop shut down, local network issue), the boat must switch to a backup server over the internet to restore control capability.
+- **Solution**: The ESP32 tracks the number of consecutive connection failures (`connection_fail_count`) up to `max_fail_threshold = 3`. 
+  - Upon reaching the limit, it toggles `using_backup`, flag-schedules a reconnect using `should_switch_server`, and triggers `connectToWebSocket()`.
+  - When actively initiating a switch, it flags `is_switching_server = true` to temporarily bypass the error-counting block on disconnect, preventing infinite switching loops.
+  - A successful connection (`WStype_CONNECTED`) immediately resets `connection_fail_count` to `0`.
 
 ---
 

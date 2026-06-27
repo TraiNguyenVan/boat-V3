@@ -70,6 +70,7 @@ sequenceDiagram
 ## Important Rules & Constraints
 - **Safety First**: If WebSocket connection to the server is lost (`WStype_DISCONNECTED`), the ESP32 must immediately stop the ESC/motor by writing `1000` microseconds.
 - **ESC Arming Protocol**: In `setup()`, the ESC must be armed before enabling WiFi or performing network operations. Write Neutral/Neutral Low (`1000` microseconds) to ESC and wait 4 seconds.
+- **Server Failover (Primary/Backup)**: The ESP32 implements auto-failover switching between a primary host (`192.168.1.184:3000`) and a backup host (`play.mairapvipproforsure.id.vn:25569`). If connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`), toggle the host and reconnect via `connectToWebSocket()`. Active switching is flagged with `is_switching_server` to avoid false error counting.
 - **Payload Optimization**: Keep JSON messages between ESP32 and Server minimal. Use compressed keys (like `t` and `s`) where necessary.
 - **Leaflet & Mapping**: Zoom controls are disabled on the Leaflet map to provide a clean FPV HUD layout. Always handle cases where GPS signals are not yet locked or home points are not set.
 - **Code Language**: Original comments are written in Vietnamese. Preserve the language context and style.
