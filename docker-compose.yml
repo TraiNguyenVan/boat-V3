@@ -1,0 +1,27 @@
+x-common:
+  app:
+    &app-environment
+    PORT: "${PORT:-3000}"
+
+services:
+  boat-server:
+    build: .
+    container_name: boat-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      <<: *app-environment
+    volumes:
+      - "./logs:/app/logs"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${PORT:-3000}/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
