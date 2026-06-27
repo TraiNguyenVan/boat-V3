@@ -8,8 +8,20 @@
 // Cấu hình mạng và Server
 const char* ssid = "VIETTEL_BINH";
 const char* password = "12345678";
-const char* server_host = "192.168.1.184"; 
-const int server_port = 3000;
+
+// Danh sách Server (Primary và Backup)
+const char* primary_host = "192.168.1.184";
+const int primary_port = 3000;
+
+const char* backup_host = "play.mairapvipproforsure.id.vn";
+const int backup_port = 25569;
+
+// Trạng thái kết nối và chuyển đổi server (Failover)
+bool using_backup = false;
+int connection_fail_count = 0;
+const int max_fail_threshold = 3;
+bool should_switch_server = false;
+bool is_switching_server = false;
 
 WebSocketsClient webSocket;
 Servo escMotor;
@@ -30,10 +42,26 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     case WStype_DISCONNECTED:
       Serial.println("[WS] Mất kết nối! Dừng động cơ.");
       escMotor.writeMicroseconds(1000); 
+      
+      if (is_switching_server) {
+        // Bỏ qua việc đếm lỗi nếu ngắt kết nối do chủ động chuyển đổi server
+        is_switching_server = false;
+        break;
+      }
+      
+      connection_fail_count++;
+      Serial.printf("[WS] Kết nối thất bại lần: %d/%d\n", connection_fail_count, max_fail_threshold);
+      
+      if (connection_fail_count >= max_fail_threshold) {
+        using_backup = !using_backup; // Đổi sang server dự phòng/chính
+        connection_fail_count = 0;
+        should_switch_server = true;
+      }
       break;
       
     case WStype_CONNECTED:
       Serial.println("[WS] Đã kết nối thành công!");
+      connection_fail_count = 0; // Reset đếm lỗi khi kết nối thành công
       webSocket.sendTXT("{\"type\":\"register\",\"role\":\"esp32\"}");
       break;
       
@@ -61,6 +89,22 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       }
       break;
   }
+}
+
+void connectToWebSocket() {
+  const char* current_host = using_backup ? backup_host : primary_host;
+  int current_port = using_backup ? backup_port : primary_port;
+  
+  Serial.print("[WS] Đang kết nối tới: ");
+  Serial.print(current_host);
+  Serial.print(":");
+  Serial.println(current_port);
+  
+  connection_fail_count = 0;
+  webSocket.disconnect();
+  webSocket.begin(current_host, current_port, "/");
+  webSocket.onEvent(webSocketEvent);
+  webSocket.setReconnectInterval(2000);
 }
 
 void setup() {
@@ -103,12 +147,16 @@ void setup() {
   Serial.println("\nWiFi đã kết nối!");
 
   // 5. Khởi tạo WebSocket
-  webSocket.begin(server_host, server_port, "/");
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(2000);
+  connectToWebSocket();
 }
 
 void loop() {
+  if (should_switch_server) {
+    should_switch_server = false;
+    is_switching_server = true;
+    connectToWebSocket();
+  }
+
   webSocket.loop();
   
   // 1. Liên tục đọc dữ liệu thô từ mạch NEO-6M và nạp vào thư viện TinyGPS++
