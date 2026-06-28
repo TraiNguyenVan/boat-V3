@@ -114,6 +114,14 @@ boat-v3/
   - Implement an adaptive step update loop (`updateServos()`) running at 10ms intervals to smoothly interpolate servo adjustments and eliminate physical jerks.
   - Manage connection state and perform automatic failover switching to the backup server if connection drops consecutively 3 times.
 
+### 4.4. Hardware & Pin Assignments (ESP32)
+- **ESC Signal**: Pin `13` (connected to ESC signal line)
+- **Steering Servo**: Pin `12` (connected to rudder servo signal line)
+- **GPS UART Connection (NEO-6M)**:
+  - RX Pin: `16` (connected to NEO-6M TX)
+  - TX Pin: `17` (connected to NEO-6M RX)
+  - GPS Serial speed: `9600` baud (configured on HardwareSerial `2`)
+
 ---
 
 ## 5. Design & Tech Stack Decisions

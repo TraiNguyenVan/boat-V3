@@ -131,8 +131,8 @@ Mã nguồn điều khiển nằm tại [arduino/esp/esp.ino](file:///home/trai/
 | :--- | :--- | :--- |
 | **ESC Signal (Động cơ)** | GPIO `13` | Tín hiệu PPM điều khiển tốc độ động cơ |
 | **Steering Servo (Lái)** | GPIO `12` | Tín hiệu điều khiển góc nghiêng bánh lái |
-| **GPS NEO-6M RX** | GPIO `17` | Kết nối vào chân TX của module GPS |
-| **GPS NEO-6M TX** | GPIO `16` | Kết nối vào chân RX của module GPS |
+| **ESP32 RX2 (GPS RX)** | GPIO `16` | Kết nối vào chân TX của module GPS NEO-6M |
+| **ESP32 TX2 (GPS TX)** | GPIO `17` | Kết nối vào chân RX của module GPS NEO-6M |
 | **Baudrate Serial GPS** | `9600` | Cấu hình trên HardwareSerial 2 |
 
 ### Cơ chế nạp & Khởi động ESC
