@@ -1,16 +1,15 @@
 #include <WiFi.h>
 #include <WebSocketsClient.h>
-#include <ArduinoJson.h>
 #include <ESP32Servo.h>
-#include <TinyGPSPlus.h>    // Thư viện xử lý GPS
-#include <HardwareSerial.h> // Thư viện giao tiếp UART
+#include <TinyGPSPlus.h>
+#include <HardwareSerial.h>
 
 // Cấu hình mạng và Server
-const char* ssid = "VIETTEL_BINH";
-const char* password = "12345678";
+const char* ssid = "BOAT";
+const char* password = "00000000";
 
 // Danh sách Server (Primary và Backup)
-const char* primary_host = "192.168.1.184";
+const char* primary_host = "171.242.239.103";
 const int primary_port = 3000;
 
 const char* backup_host = "play.mairapvipproforsure.id.vn";
@@ -27,21 +26,236 @@ WebSocketsClient webSocket;
 Servo escMotor;
 Servo steeringServo;
 
-// Khởi tạo đối tượng GPS và cổng Serial2
 TinyGPSPlus gps;
 HardwareSerial gpsSerial(2);
 
-// Khai báo chân kết nối
 const int ESC_PIN = 13;
 const int SERVO_PIN = 12;
-const int GPS_RX_PIN = 16; // Nối với TX của NEO-6M
-const int GPS_TX_PIN = 17; // Nối với RX của NEO-6M
+const int GPS_RX_PIN = 16;
+const int GPS_TX_PIN = 17;
 
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-  switch(type) {
+const int THROTTLE_MIN_US = 1000;
+const int THROTTLE_MAX_US = 2000;
+const int STEERING_MIN_US = 1000;
+const int STEERING_MAX_US = 2000;
+const int THROTTLE_SAFE_US = 1000;
+const int STEERING_CENTER_US = 1500;
+const int STEERING_TRIM_MIN_US = -200;
+const int STEERING_TRIM_MAX_US = 200;
+const uint16_t SERVO_UPDATE_INTERVAL_MS = 10;
+const uint16_t CONTROL_TIMEOUT_MS = 600;
+const int THROTTLE_STEP_MIN_US = 8;
+const int THROTTLE_STEP_MAX_US = 70;
+const int STEERING_STEP_MIN_US = 10;
+const int STEERING_STEP_MAX_US = 90;
+
+int targetThrottleUs = THROTTLE_SAFE_US;
+int targetRawSteeringUs = STEERING_CENTER_US;
+int targetSteeringUs = STEERING_CENTER_US;
+int currentThrottleUs = THROTTLE_SAFE_US;
+int currentSteeringUs = STEERING_CENTER_US;
+int steeringTrimUs = 0;
+unsigned long lastServoUpdateMs = 0;
+unsigned long lastControlPacketMs = 0;
+
+int stepToward(int current, int target, int maxStep) {
+  if (current < target) {
+    return min(current + maxStep, target);
+  }
+  if (current > target) {
+    return max(current - maxStep, target);
+  }
+  return current;
+}
+
+int adaptiveStep(int current, int target, int minStep, int maxStep) {
+  const int delta = abs(target - current);
+  if (delta == 0) {
+    return 0;
+  }
+  return constrain(delta / 3, minStep, maxStep);
+}
+
+int applySteeringTrim(int steering) {
+  return constrain(steering + steeringTrimUs, STEERING_MIN_US, STEERING_MAX_US);
+}
+
+bool parseUnsignedField(const uint8_t* payload, size_t start, size_t end, int& value) {
+  if (start >= end) {
+    return false;
+  }
+
+  int parsed = 0;
+  for (size_t i = start; i < end; i++) {
+    if (payload[i] < '0' || payload[i] > '9') {
+      return false;
+    }
+    parsed = parsed * 10 + payload[i] - '0';
+  }
+
+  value = parsed;
+  return true;
+}
+
+bool parseSignedField(const uint8_t* payload, size_t start, size_t end, int& value) {
+  if (start >= end) {
+    return false;
+  }
+
+  bool negative = false;
+  if (payload[start] == '-' || payload[start] == '+') {
+    negative = payload[start] == '-';
+    start++;
+  }
+
+  int parsed = 0;
+  if (!parseUnsignedField(payload, start, end, parsed)) {
+    return false;
+  }
+
+  value = negative ? -parsed : parsed;
+  return true;
+}
+
+void setControlTargets(int throttle, int steering) {
+  targetThrottleUs = constrain(throttle, THROTTLE_MIN_US, THROTTLE_MAX_US);
+  targetRawSteeringUs = constrain(steering, STEERING_MIN_US, STEERING_MAX_US);
+  targetSteeringUs = applySteeringTrim(targetRawSteeringUs);
+  lastControlPacketMs = millis();
+}
+
+void updateServos() {
+  const unsigned long now = millis();
+  if (lastControlPacketMs != 0 && now - lastControlPacketMs > CONTROL_TIMEOUT_MS) {
+    targetThrottleUs = THROTTLE_SAFE_US;
+    targetRawSteeringUs = STEERING_CENTER_US;
+    targetSteeringUs = applySteeringTrim(targetRawSteeringUs);
+    lastControlPacketMs = 0;
+  }
+
+  if (now - lastServoUpdateMs < SERVO_UPDATE_INTERVAL_MS) {
+    return;
+  }
+  lastServoUpdateMs = now;
+
+  const int throttleStep = adaptiveStep(currentThrottleUs, targetThrottleUs, THROTTLE_STEP_MIN_US, THROTTLE_STEP_MAX_US);
+  const int steeringStep = adaptiveStep(currentSteeringUs, targetSteeringUs, STEERING_STEP_MIN_US, STEERING_STEP_MAX_US);
+  const int nextThrottle = stepToward(currentThrottleUs, targetThrottleUs, throttleStep);
+  const int nextSteering = stepToward(currentSteeringUs, targetSteeringUs, steeringStep);
+
+  if (nextThrottle != currentThrottleUs) {
+    currentThrottleUs = nextThrottle;
+    escMotor.writeMicroseconds(currentThrottleUs);
+  }
+
+  if (nextSteering != currentSteeringUs) {
+    currentSteeringUs = nextSteering;
+    steeringServo.writeMicroseconds(currentSteeringUs);
+  }
+}
+
+void stopMotor() {
+  targetThrottleUs = THROTTLE_SAFE_US;
+  targetRawSteeringUs = STEERING_CENTER_US;
+  targetSteeringUs = applySteeringTrim(targetRawSteeringUs);
+  currentThrottleUs = THROTTLE_SAFE_US;
+  currentSteeringUs = targetSteeringUs;
+  escMotor.writeMicroseconds(currentThrottleUs);
+  steeringServo.writeMicroseconds(currentSteeringUs);
+}
+
+void sendPong(const uint8_t* payload, size_t length) {
+  if (length <= 1) {
+    return;
+  }
+
+  char packet[32];
+  const size_t timestampLength = min(length - 1, sizeof(packet) - 2);
+
+  packet[0] = 'Q';
+  memcpy(packet + 1, payload + 1, timestampLength);
+  packet[timestampLength + 1] = '\0';
+  webSocket.sendTXT(packet);
+}
+
+bool parseControlPacket(const uint8_t* payload, size_t length, int& throttle, int& steering) {
+  if (length < 8 || length >= 32 || payload[0] != 'C') {
+    return false;
+  }
+
+  size_t commaIndex = 0;
+  for (size_t i = 1; i < length; i++) {
+    if (payload[i] == ',') {
+      commaIndex = i;
+      break;
+    }
+  }
+
+  if (commaIndex == 0) {
+    return false;
+  }
+
+  int parsedThrottle = 0;
+  int parsedSteering = 0;
+
+  if (!parseUnsignedField(payload, 1, commaIndex, parsedThrottle) ||
+      !parseUnsignedField(payload, commaIndex + 1, length, parsedSteering)) {
+    return false;
+  }
+
+  throttle = constrain(parsedThrottle, THROTTLE_MIN_US, THROTTLE_MAX_US);
+  steering = constrain(parsedSteering, STEERING_MIN_US, STEERING_MAX_US);
+  return true;
+}
+
+bool parseTrimPacket(const uint8_t* payload, size_t length, int& trim) {
+  if (length < 2 || length >= 8 || payload[0] != 'T') {
+    return false;
+  }
+
+  int parsedTrim = 0;
+  if (!parseSignedField(payload, 1, length, parsedTrim)) {
+    return false;
+  }
+
+  trim = constrain(parsedTrim, STEERING_TRIM_MIN_US, STEERING_TRIM_MAX_US);
+  return true;
+}
+
+void handleWebSocketText(uint8_t* payload, size_t length) {
+  if (length == 0) {
+    return;
+  }
+
+  if (payload[0] == 'C') {
+    int rcThrottle = 1000;
+    int rcSteering = 1500;
+    if (parseControlPacket(payload, length, rcThrottle, rcSteering)) {
+      setControlTargets(rcThrottle, rcSteering);
+    }
+    return;
+  }
+
+  if (payload[0] == 'T') {
+    int parsedTrim = 0;
+    if (parseTrimPacket(payload, length, parsedTrim)) {
+      steeringTrimUs = parsedTrim;
+      targetSteeringUs = applySteeringTrim(targetRawSteeringUs);
+      Serial.printf("[CTRL] Steering trim: %+d us\n", steeringTrimUs);
+    }
+    return;
+  }
+
+  if (payload[0] == 'P') {
+    sendPong(payload, length);
+  }
+}
+
+void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
+  switch (type) {
     case WStype_DISCONNECTED:
       Serial.println("[WS] Mất kết nối! Dừng động cơ.");
-      escMotor.writeMicroseconds(1000); 
+      stopMotor();
       
       if (is_switching_server) {
         // Bỏ qua việc đếm lỗi nếu ngắt kết nối do chủ động chuyển đổi server
@@ -58,35 +272,18 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         should_switch_server = true;
       }
       break;
-      
+
     case WStype_CONNECTED:
       Serial.println("[WS] Đã kết nối thành công!");
       connection_fail_count = 0; // Reset đếm lỗi khi kết nối thành công
       webSocket.sendTXT("{\"type\":\"register\",\"role\":\"esp32\"}");
       break;
-      
+
     case WStype_TEXT:
-      StaticJsonDocument<200> doc;
-      DeserializationError error = deserializeJson(doc, payload);
-      
-      if (!error) {
-        // ---- THÊM PHẦN NÀY ĐỂ PHẢN HỒI PING ----
-        if (doc["type"] == "ping") {
-          // Đọc mốc thời gian dạng String để tránh lỗi tràn bộ nhớ (overflow) của số quá lớn
-          String timeStamp = doc["t"].as<String>();
-          String pongPacket = "{\"type\":\"pong\",\"t\":" + timeStamp + "}";
-          webSocket.sendTXT(pongPacket);
-        }
-        // ----------------------------------------
-        
-        // Phần điều khiển động cơ cũ
-        if (doc.containsKey("t") && doc.containsKey("s")) {
-          int rcThrottle = doc["t"];
-          int rcSteering = doc["s"];
-          escMotor.writeMicroseconds(rcThrottle);
-          steeringServo.writeMicroseconds(rcSteering);
-        }
-      }
+      handleWebSocketText(payload, length);
+      break;
+
+    default:
       break;
   }
 }
@@ -104,49 +301,32 @@ void connectToWebSocket() {
   webSocket.disconnect();
   webSocket.begin(current_host, current_port, "/");
   webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(2000);
+  webSocket.setReconnectInterval(1000);
 }
 
 void setup() {
   Serial.begin(115200);
-  
-  // 1. Cấu hình Serial cho GPS
   gpsSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-  
-  // 2. Gắn chân tín hiệu cho ESC và Servo ngay lập tức
+
   escMotor.attach(ESC_PIN, 1000, 2000);
   steeringServo.attach(SERVO_PIN, 1000, 2000);
-  
-  // ==========================================
-  // 3. BẮT ĐẦU QUÁ TRÌNH ARMING ESC
-  // ==========================================
-  Serial.println("Đang Arming ESC...");
-  
-  // LƯU Ý QUAN TRỌNG:
-  // - Nếu ESC của bạn là loại cho thuyền/ô tô RC (2 chiều có tiến có lùi): Neutral là 1500
-  // - Nếu ESC của bạn là loại cho máy bay/drone (1 chiều chỉ tiến): Neutral là 1000
-  escMotor.writeMicroseconds(1000); 
-  
-  // Đưa bánh lái về góc thẳng
-  steeringServo.writeMicroseconds(1500); 
-  
-  // Dừng lại 4 giây. 
-  // Trong lúc này ESC sẽ kêu bíp bíp (đếm số cell pin), 
-  // sau đó là một tiếng BÍP DÀI xác nhận đã arm thành công.
-  delay(4000); 
-  Serial.println("Arming ESC hoàn tất!");
-  // ==========================================
 
-  // 4. Sau khi Arm xong, mới tiến hành kết nối WiFi (tác vụ tốn thời gian)
+  Serial.println("Arming ESC...");
+  stopMotor();
+  delay(4000);
+  Serial.println("ESC armed.");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(ssid, password);
-  Serial.print("Đang kết nối WiFi");
+
+  Serial.print("Connecting WiFi");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(250);
     Serial.print(".");
   }
-  Serial.println("\nWiFi đã kết nối!");
 
-  // 5. Khởi tạo WebSocket
+  // Khởi tạo WebSocket
   connectToWebSocket();
 }
 
@@ -158,30 +338,35 @@ void loop() {
   }
 
   webSocket.loop();
-  
-  // 1. Liên tục đọc dữ liệu thô từ mạch NEO-6M và nạp vào thư viện TinyGPS++
-  while (gpsSerial.available() > 0) {
+  updateServos();
+
+  uint16_t gpsBytes = 0;
+  while (gpsSerial.available() > 0 && gpsBytes < 32) {
     gps.encode(gpsSerial.read());
+    gpsBytes++;
   }
-  
-  // 2. Gửi dữ liệu GPS lên server định kỳ (Ví dụ: 1 giây gửi 1 lần)
+
+  webSocket.loop();
+  updateServos();
+
   static unsigned long lastGPSCheck = 0;
+  static unsigned long lastNoGPSLog = 0;
   if (millis() - lastGPSCheck > 1000) {
     lastGPSCheck = millis();
-    
-    // Chỉ gửi khi GPS đã bắt được vệ tinh và có tọa độ hợp lệ
-    if (gps.location.isValid()) {
-      double currentLat = gps.location.lat();
-      double currentLng = gps.location.lng();
-      
-      // Đóng gói thành chuỗi JSON
-      String gpsPackage = "{\"type\":\"gps\",\"lat\":" + String(currentLat, 6) + 
-                          ",\"lng\":" + String(currentLng, 6) + "}";
-                          
+
+    if (gps.location.isValid() && gps.location.isUpdated()) {
+      char gpsPackage[96];
+      snprintf(
+        gpsPackage,
+        sizeof(gpsPackage),
+        "{\"type\":\"gps\",\"lat\":%.6f,\"lng\":%.6f}",
+        gps.location.lat(),
+        gps.location.lng()
+      );
       webSocket.sendTXT(gpsPackage);
-    } else {
-      // Báo log ra Serial nếu đang chờ vệ tinh (đèn xanh trên NEO-6M chưa chớp)
-      Serial.println("Đang tìm tín hiệu vệ tinh...");
+    } else if (!gps.location.isValid() && millis() - lastNoGPSLog > 5000) {
+      lastNoGPSLog = millis();
+      Serial.println("Waiting for GPS signal...");
     }
   }
 }
