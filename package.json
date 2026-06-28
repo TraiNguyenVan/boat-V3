@@ -4,7 +4,8 @@
   "description": "Hệ thống điều khiển thuyền RC và giám sát GPS thời gian thực",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "sync-rules": "node scripts/sync-rules.js"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

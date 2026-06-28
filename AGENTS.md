@@ -16,6 +16,8 @@ This file provides context, rules, and guidelines for AI coding agents working o
 - [arduino/esp/esp.ino](file:///home/trai/stacks/boat-v3/arduino/esp/esp.ino): ESP32 firmware code.
 - [.env.example](file:///home/trai/stacks/boat-v3/.env.example): Environment variable configuration template.
 - [.dockerignore](file:///home/trai/stacks/boat-v3/.dockerignore) / [Dockerfile](file:///home/trai/stacks/boat-v3/Dockerfile) / [docker-compose.yml](file:///home/trai/stacks/boat-v3/docker-compose.yml): Deployment configuration.
+- [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md): Master rules file for AI assistants and developers.
+- [scripts/sync-rules.js](file:///home/trai/stacks/boat-v3/scripts/sync-rules.js): Utility to sync rules from AGENTS.md to assistant-specific files.
 
 ## System Architecture & Communication Flow
 The server acts as a low-latency WebSocket bridge between the web dashboard and the ESP32, bypassing JSON parsing overhead for control and latency loops.
@@ -88,12 +90,15 @@ sequenceDiagram
 - **Code Language**: Original comments are written in Vietnamese. Preserve the language context and style.
 
 ## Post-Feature Change Workflow (Mandatory)
-Whenever a feature change or modification is successfully implemented, the agent **MUST** spin up two subagents using the `invoke_subagent` tool to finalize the task:
+Whenever a feature change or modification is successfully implemented, the agent **MUST** execute the following steps:
 
-1. **Agent 1: Documentation Update**
-   - **Role**: `Documentation Updater`
-   - **Prompt**: "Review the recent codebase changes, identify any modified features, configurations, protocols, or pin assignments. Update all relevant markdown (`.md`) files in the workspace (such as [README.md](file:///home/trai/stacks/boat-v3/README.md), [ARCHITECTURE.md](file:///home/trai/stacks/boat-v3/ARCHITECTURE.md), [GEMINI.md](file:///home/trai/stacks/boat-v3/GEMINI.md), and [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md)) to accurately reflect the changes. Ensure instructions, sequence diagrams, and architecture guides are fully aligned."
+1. **Synchronize Agent Rules**: Run `npm run sync-rules` to propagate any changes made to the master rule file `AGENTS.md` across all other assistant configuration files.
+2. **Finalize with Subagents**: Spin up two subagents using the `invoke_subagent` tool:
    
-2. **Agent 2: Solid Commit Creator**
-   - **Role**: `Git Committer`
-   - **Prompt**: "Run git status and git diff to inspect the changes. Compose a high-quality, professional git commit message detailing what changes were made and why, following conventional commits standard. Stage all appropriate files and create a clean git commit."
+   - **Agent 1: Documentation Update**
+     - **Role**: `Documentation Updater`
+     - **Prompt**: "Review the recent codebase changes, identify any modified features, configurations, protocols, or pin assignments. Update all relevant markdown (`.md`) files in the workspace (such as [README.md](file:///home/trai/stacks/boat-v3/README.md), [ARCHITECTURE.md](file:///home/trai/stacks/boat-v3/ARCHITECTURE.md), and the master rules file [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md)). After updating AGENTS.md, run npm run sync-rules to propagate those rules to the other assistant files. Ensure instructions, sequence diagrams, and architecture guides are fully aligned."
+     
+   - **Agent 2: Solid Commit Creator**
+     - **Role**: `Git Committer`
+     - **Prompt**: "Run git status and git diff to inspect the changes. Compose a high-quality, professional git commit message detailing what changes were made and why, following conventional commits standard. Stage all appropriate files (including all synced rule files) and create a clean git commit."

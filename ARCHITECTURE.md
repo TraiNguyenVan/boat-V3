@@ -64,6 +64,10 @@ The codebase is split cleanly into frontend client, backend relay server, and mi
 
 ```text
 boat-v3/
+├── .cursor/rules/
+│   └── boat-gps.mdc            # Cursor rules file (auto-generated)
+├── .github/
+│   └── copilot-instructions.md # GitHub Copilot instructions (auto-generated)
 ├── arduino/
 │   └── esp/
 │       └── esp.ino             # ESP32 C++ (Arduino) source code
@@ -71,14 +75,17 @@ boat-v3/
 │   ├── app.js                  # WebSocket, Gamepad API, and Leaflet Map logic
 │   ├── index.html              # FPV HUD UI Layout
 │   └── style.css               # Styling
+├── scripts/
+│   └── sync-rules.js           # AI Agent rules synchronization utility script
+├── .cursorrules                # Cursor rules file (auto-generated)
 ├── .dockerignore               # Docker build ignore list
 ├── .env.example                # Sample environment configurations
-├── AGENTS.md                   # Global agent rules
+├── AGENTS.md                   # Global agent rules master file
 ├── ARCHITECTURE.md             # This file (System Architecture)
+├── CLAUDE.md                   # Claude assistant rules (auto-generated)
 ├── docker-compose.yml          # Container configuration
 ├── Dockerfile                  # Node.js Alpine Docker definition
-├── GEMINI.md                   # Global Gemini rules
-├── README.md                   # Quick start guide (Vietnamese)
+├── GEMINI.md                   # Gemini assistant rules (auto-generated)
 ├── package.json                # Server script & dependencies config
 └── server.js                   # Node.js server entry point (WebSocket Bridge)
 ```
@@ -171,3 +178,16 @@ boat-v3/
   2. Visit `http://localhost:3000`.
   3. Hook up a gamepad controller and press triggers to verify PWM outputs mapped onto the console.
   4. Track ping latency dynamically.
+
+---
+
+## 8. Developer & AI Agent Guidelines
+
+### AI Agent Rules Synchronization
+The project uses a master rule file, [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md), to define code patterns, pin mappings, and failsafe constraints. 
+
+Whenever changes are made to these guidelines, run the rule synchronization script:
+```bash
+npm run sync-rules
+```
+This utility automatically updates `GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/boat-gps.mdc`, and `.github/copilot-instructions.md` to ensure all AI tools stay perfectly in sync with the codebase specifications.

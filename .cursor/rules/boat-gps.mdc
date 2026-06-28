@@ -1,6 +1,12 @@
-# Gemini Assistant Instructions & Guidelines - Boat GPS Server
+---
+description: "Boat GPS Server core instructions, failsafes, rules, and post-feature workflow guidelines."
+globs: ["*"]
+alwaysApply: true
+---
 
-This file provides context, rules, and guidelines for the Gemini assistant and other AI coding agents working on the **Boat GPS Server** project.
+# Cursor Assistant Rules - Boat GPS Server
+
+This file provides context, rules, and guidelines for Cursor and other AI coding agents working on the **Boat GPS Server** project.
 
 ## Tech Stack
 - **Backend**: Node.js (Express, `ws` for WebSockets)

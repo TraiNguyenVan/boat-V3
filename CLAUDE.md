@@ -1,6 +1,6 @@
-# Gemini Assistant Instructions & Guidelines - Boat GPS Server
+# Claude Assistant Instructions & Guidelines - Boat GPS Server
 
-This file provides context, rules, and guidelines for the Gemini assistant and other AI coding agents working on the **Boat GPS Server** project.
+This file provides context, rules, and guidelines for the Claude assistant and other AI coding agents working on the **Boat GPS Server** project.
 
 ## Tech Stack
 - **Backend**: Node.js (Express, `ws` for WebSockets)

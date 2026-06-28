@@ -52,6 +52,10 @@ Server Node.js hiệu năng cao, độ trễ cực thấp phục vụ điều kh
 
 ```text
 .
+├── .cursor/rules/
+│   └── boat-gps.mdc       # File quy tắc cho Cursor (tự động tạo)
+├── .github/
+│   └── copilot-instructions.md # Hướng dẫn cho GitHub Copilot (tự động tạo)
 ├── arduino/
 │   └── esp/
 │       └── esp.ino        # Mã nguồn C++ nạp cho vi điều khiển ESP32
@@ -61,10 +65,17 @@ Server Node.js hiệu năng cao, độ trễ cực thấp phục vụ điều kh
 │   ├── app.js             # Logic phía Web Client (Leaflet, Gamepad, WS)
 │   ├── index.html         # Giao diện dashboard HTML5
 │   └── style.css          # Định dạng và giao diện CSS3
+├── scripts/
+│   └── sync-rules.js      # Tiện ích đồng bộ quy tắc AI Agent từ AGENTS.md
+├── .cursorrules           # Quy tắc cho Cursor IDE (tự động tạo)
 ├── .dockerignore
 ├── .env.example           # File cấu hình môi trường mẫu
+├── AGENTS.md              # Quy tắc master cho các AI Agent hỗ trợ phát triển
+├── ARCHITECTURE.md        # Tài liệu kiến trúc hệ thống (Tiếng Anh)
+├── CLAUDE.md              # Quy tắc cho Claude Assistant (tự động tạo)
 ├── docker-compose.yml     # File cấu hình Docker Compose
 ├── Dockerfile             # Cấu hình build Docker image cho server
+├── GEMINI.md              # Quy tắc cho Gemini Assistant (tự động tạo)
 ├── package.json
 ├── package-lock.json
 ├── README.md
@@ -117,6 +128,16 @@ Nếu bạn muốn đóng gói và triển khai ứng dụng dưới dạng Cont
 
 ```bash
 docker compose up --build
+```
+
+### 🤖 Đồng bộ quy tắc AI Agent (Rules Synchronization)
+
+Dự án sử dụng file master [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md) để định nghĩa toàn bộ quy tắc, cấu hình phần cứng, giao thức và các failsafe cho AI Agent (Gemini, Claude, Cursor, Copilot).
+
+Khi bạn hoặc AI Agent thực hiện thay đổi liên quan đến cấu hình hoặc tính năng, hãy chạy lệnh sau để tự động đồng bộ hóa quy tắc sang các file cấu hình tương ứng (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, v.v.):
+
+```bash
+npm run sync-rules
 ```
 
 ---
