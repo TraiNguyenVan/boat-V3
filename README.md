@@ -148,10 +148,10 @@ const char* ssid = "TEN_WIFI";
 const char* password = "MAT_KHAU_WIFI";
 
 // Danh sách máy chủ để tự động chuyển đổi khi mất kết nối
-const char* primary_host = "IP_SERVER_CHINH"; // Ví dụ: "192.168.1.184"
+const char* primary_host = "IP_SERVER_CHINH";
 const int primary_port = 3000;
 
-const char* backup_host = "DOMAIN_SERVER_DU_PHONG"; // Ví dụ: "play.mairapvipproforsure.id.vn"
+const char* backup_host = "IP_SERVER_DU_PHONG";
 const int backup_port = 25569;
 ```
 
