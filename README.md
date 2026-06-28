@@ -209,7 +209,7 @@ sequenceDiagram
 - Server chuyển tiếp về Web UI nguyên vẹn để hiển thị vị trí và vẽ đường đi trên bản đồ.
 
 #### 5. Đo độ trễ mạng (Ping/Pong Text)
-- Web UI gửi Ping mỗi 500ms: `P<timestamp>` (e.g. `P1718850000000`).
+- Web UI gửi Ping mỗi 1000ms: `P<timestamp>` (e.g. `P1718850000000`).
 - ESP32 nhận được sẽ trả lời ngay lập tức bằng gói Pong: `Q<timestamp>`.
 - Server nhận được gói `Q` sẽ chuyển đổi thành dạng JSON gửi về Web UI: `{"type": "q", "t": timestamp}` để tính toán ping hiển thị lên giao diện.
 

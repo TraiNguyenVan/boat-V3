@@ -41,7 +41,7 @@ sequenceDiagram
     Server->>ESP: T-20 (Direct relay)
 
     Note over Web,ESP: Phase 4: Heartbeat & Latency Check (Text Packets)
-    loop Interval: 500ms (2Hz)
+    loop Interval: 1000ms (1Hz)
         Web->>Server: P178129039012 (Text)
         Server->>ESP: P178129039012 (Direct relay)
         ESP->>Server: Q178129039012 (Text)

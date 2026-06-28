@@ -72,7 +72,7 @@ sequenceDiagram
    - ESP32 publishes coordinates: `{"type": "gps", "lat": double, "lng": double}`.
    - Server relays it directly to the dashboard.
 5. **Ping/Pong (Low-Latency Text)**:
-   - Dashboard sends ping: `P<timestamp>` (e.g., `P178129039012`).
+   - Dashboard sends ping every 1000ms: `P<timestamp>` (e.g., `P178129039012`).
    - ESP32 responds with pong: `Q<timestamp>` (e.g., `Q178129039012`).
    - Server translates the pong to JSON for the web client: `{"type": "q", "t": timestamp}`.
    - Dashboard calculates latency: `Date.now() - timestamp`.
