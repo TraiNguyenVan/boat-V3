@@ -100,6 +100,63 @@ body {
 }
 .telemetry-item small { font-size: 0.7rem; color: #cbd5e1; }
 
+.trim-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 44px minmax(72px, auto) 44px 72px;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+
+.trim-label {
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trim-value {
+    min-width: 72px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.trim-btn,
+.trim-reset {
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-radius: 8px;
+    font-weight: 800;
+}
+
+.trim-btn {
+    font-size: 1.2rem;
+}
+
+.trim-reset {
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+}
+
+.trim-btn:disabled {
+    opacity: 0.35;
+}
+
+.trim-btn:active,
+.trim-reset:active {
+    background: rgba(255, 255, 255, 0.24);
+}
+
 .btn-dji {
     background: transparent;
     color: #fff;
@@ -124,4 +181,24 @@ body {
     border: 2.5px solid #ffffff;
     border-radius: 50%;
     box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.7);
+}
+
+@media (max-width: 430px) {
+    .telemetry {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .telemetry-item .label {
+        font-size: 0.62rem;
+    }
+
+    .telemetry-item .value {
+        font-size: 1rem;
+    }
+
+    .trim-panel {
+        grid-template-columns: 1fr 38px 66px 38px 64px;
+        gap: 6px;
+    }
 }
