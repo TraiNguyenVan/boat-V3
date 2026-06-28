@@ -149,10 +149,10 @@ const char* password = "MAT_KHAU_WIFI";
 
 // Danh sách máy chủ để tự động chuyển đổi khi mất kết nối
 const char* primary_host = "HOST_SERVER_CHINH";
-const int primary_port = 3000;
+const int primary_port = PORT_SERVER_CHINH;
 
 const char* backup_host = "HOST_SERVER_DU_PHONG";
-const int backup_port = 25569;
+const int backup_port = PORT_SERVER_DU_PHONG;
 ```
 
 ---
