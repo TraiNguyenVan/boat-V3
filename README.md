@@ -144,14 +144,14 @@ Mã nguồn điều khiển nằm tại [arduino/esp/esp.ino](file:///home/trai/
 Cấu hình Wi-Fi và danh sách máy chủ trong file code `esp.ino`:
 
 ```cpp
-const char* ssid = "TEN_WIFI";
-const char* password = "MAT_KHAU_WIFI";
+const char* ssid = "TEN_WIFI"; // Ví dụ: "BOAT"
+const char* password = "MAT_KHAU_WIFI"; // Ví dụ: "00000000"
 
 // Danh sách máy chủ để tự động chuyển đổi khi mất kết nối
-const char* primary_host = "IP_SERVER_CHINH";
+const char* primary_host = "IP_SERVER_CHINH"; // Ví dụ: "171.242.239.103"
 const int primary_port = 3000;
 
-const char* backup_host = "IP_SERVER_DU_PHONG";
+const char* backup_host = "DOMAIN_SERVER_DU_PHONG"; // Ví dụ: "play.mairapvipproforsure.id.vn"
 const int backup_port = 25569;
 ```
 
