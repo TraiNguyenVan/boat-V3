@@ -223,7 +223,9 @@ sequenceDiagram
 > 1. **Mất kết nối mạng (Network Loss)**: Nếu kết nối WebSocket bị ngắt đột ngột (`WStype_DISCONNECTED`), ESP32 ngay lập tức dừng động cơ bằng cách ghi giá trị `1000` microseconds vào chân điều khiển ESC.
 > 2. **Trôi dữ liệu điều khiển (Control Timeout)**: Nếu server hoặc mạng bị nghẽn dẫn đến việc ESP32 không nhận được bất kỳ lệnh `C` nào trong vòng **600ms** (`CONTROL_TIMEOUT_MS`), vi điều khiển sẽ kích hoạt chế độ ngắt động cơ khẩn cấp và trả bánh lái về vị trí trung tâm (`1500` microseconds).
 > 3. **Chống nghẽn dữ liệu (Congestion Control)**: Web client và server giám sát dung lượng bộ đệm `ws.bufferedAmount`. Nếu kích thước bộ đệm vượt quá `128` bytes, các gói tin điều khiển cũ sẽ tự động bị bỏ qua (discard) để tránh tích lũy độ trễ.
-> 4. **Mượt hóa chuyển động (Smoothing & Adaptive Step)**: Các chuyển động của bánh lái được nội suy mượt mà qua hàm `updateServos()` ở tần số 100Hz (chu kỳ 10ms) sử dụng bước nhảy thích ứng `constrain(delta / 3, minStep, maxStep)` nhằm tránh việc servo bánh lái bị giật hoặc gãy trục khi thay đổi góc lái đột ngột.
+> 4. **Mượt hóa chuyển động (Smoothing & Adaptive Step)**: Cả động cơ (ga) và bánh lái đều được nội suy mượt mà qua hàm `updateServos()` ở tần số 100Hz (chu kỳ 10ms) sử dụng bước nhảy thích ứng `constrain(delta / 3, minStep, maxStep)` nhằm tránh việc servo bánh lái bị giật/gãy trục hoặc động cơ thay đổi tốc độ đột ngột.
+> 5. **Chuyển đổi dự phòng (Server Failover)**: Nếu kết nối tới server bị mất liên tiếp 3 lần (`connection_fail_count >= 3`), ESP32 sẽ tự động chuyển đổi giữa server chính (`primary_host`: `171.242.239.103:3000`) và server dự phòng (`backup_host`: `play.mairapvipproforsure.id.vn:25569`). Cờ `is_switching_server` được dùng để tạm thời bỏ qua việc đếm lỗi trong quá trình kết nối lại, ngăn ngừa vòng lặp chuyển đổi vô hạn.
+
 
 ---
 

@@ -111,7 +111,7 @@ boat-v3/
   - Decode telemetry with the `TinyGPSPlus` library.
   - Maintain a fast, non-JSON text parser to process control (`C`), steering trim (`T`), and ping (`P`) commands without heap allocation or parsing delay.
   - Apply PWM pulse signals to the Speed Controller (ESC) and Steering Servo using the `ESP32Servo` library.
-  - Implement an adaptive step update loop (`updateServos()`) running at 10ms intervals to smoothly interpolate servo adjustments and eliminate physical jerks.
+  - Implement an adaptive step update loop (`updateServos()`) running at 10ms intervals to smoothly interpolate both motor throttle and steering servo adjustments, avoiding mechanical jerks or sudden acceleration.
   - Manage connection state and perform automatic failover switching to the backup server if connection drops consecutively 3 times.
 
 ### 4.4. Hardware & Pin Assignments (ESP32)
