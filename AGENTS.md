@@ -84,7 +84,7 @@ sequenceDiagram
 - **WebSocket NoDelay & Compression**: The server disables Nagle's algorithm (`ws._socket.setNoDelay(true)`) and disables WebSocket compression (`perMessageDeflate: false`) to minimize latency.
 - **Adaptive Step & Smoothing**: The ESP32 updates servos inside `updateServos()` at 10ms intervals. It uses adaptive stepping `constrain(delta / 3, minStep, maxStep)` to smoothly interpolate movements and avoid servo jerks.
 - **Congestion Control**: The server and dashboard track `ws.bufferedAmount` to discard control packets if the buffer exceeds `128` bytes, preventing latency accumulation.
-- **Server Failover (Primary/Backup)**: The ESP32 switches between primary host (`171.242.239.103:3000`) and backup host (`play.mairapvipproforsure.id.vn:25569`) if connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`). Active switching is flagged with `is_switching_server` to avoid false error counting.
+- **Server Failover (Primary/Backup)**: The ESP32 switches between the primary host (configured by `primary_host` and `primary_port`, defaulting to `171.242.239.103:3000`) and the backup host (configured by `backup_host` and `backup_port`, defaulting to `play.mairapvipproforsure.id.vn:25569`) if the connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`). Active switching is flagged with `is_switching_server` to avoid false error counting.
 - **Code Language**: Original comments are written in Vietnamese. Preserve the language context and style.
 
 ## Post-Feature Change Workflow (Mandatory)
