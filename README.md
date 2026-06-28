@@ -103,16 +103,16 @@ Không dùng `localhost` trong ESP32, vì `localhost` trên ESP32 là chính ESP
 
 ## Luồng kết nối
 
-1. Web mở giao diện từ server và đăng ký WebSocket với vai trò `web`.
-2. ESP32 kết nối WebSocket tới server và đăng ký vai trò `esp32`.
-3. Web gửi dữ liệu điều khiển dạng `control`.
-4. Server đổi dữ liệu điều khiển sang key ngắn rồi gửi xuống ESP32.
-5. ESP32 gửi dữ liệu GPS lên server.
-6. Server chuyển GPS tới web để cập nhật bản đồ.
+1. Web mở giao diện từ server và đăng ký WebSocket với vai trò `web` (JSON).
+2. ESP32 kết nối WebSocket tới server và đăng ký vai trò `esp32` (JSON).
+3. Web gửi dữ liệu điều khiển qua gói tin text rút gọn dạng `C<throttle>,<steering>` để đạt độ trễ cực thấp.
+4. Server chuyển tiếp trực tiếp gói tin text xuống ESP32 không qua phân tích JSON.
+5. ESP32 gửi dữ liệu GPS thô dạng JSON lên server.
+6. Server chuyển tiếp GPS tới web để cập nhật vị trí bản đồ Leaflet.
 
 ## Gói tin WebSocket
 
-### Đăng ký thiết bị
+### Đăng ký thiết bị (Định dạng JSON)
 
 Web:
 
@@ -132,26 +132,25 @@ ESP32:
 }
 ```
 
-### Web gửi điều khiển lên server
+### Điều khiển thời gian thực (Định dạng text siêu nhẹ)
 
-```json
-{
-  "type": "control",
-  "throttle": 1500,
-  "steering": 1500
-}
+Web gửi điều khiển trực tiếp (hoặc Server tự động chuyển đổi từ gói JSON cũ):
+
+```text
+C<throttle_us>,<steering_us>
 ```
+*Ví dụ:* `C1500,1500` (giá trị từ `1000` đến `2000` microseconds).
 
-Server gửi xuống ESP32 ở dạng rút gọn:
+### Hiệu chỉnh góc lái (Steering Trim - Định dạng text)
 
-```json
-{
-  "t": 1500,
-  "s": 1500
-}
+Web gửi hiệu chỉnh góc lệch bánh lái:
+
+```text
+T<trim_us>
 ```
+*Ví dụ:* `T-15` (giá trị từ `-200` đến `200` microseconds).
 
-### ESP32 gửi GPS lên server
+### ESP32 gửi GPS lên server (Định dạng JSON)
 
 ```json
 {
@@ -163,22 +162,27 @@ Server gửi xuống ESP32 ở dạng rút gọn:
 
 Server chuyển tiếp về web với cùng định dạng.
 
-### Đo độ trễ
+### Đo độ trễ kết nối (Ping/Pong text)
 
-Web gửi:
+Web gửi gói ping định kỳ mỗi 500ms:
 
-```json
-{
-  "type": "ping",
-  "t": 1718850000000
-}
+```text
+P<timestamp>
 ```
+*Ví dụ:* `P1718850000000`
 
-ESP32 phản hồi:
+ESP32 nhận được sẽ phản hồi ngay lập tức:
+
+```text
+Q<timestamp>
+```
+*Ví dụ:* `Q1718850000000`
+
+Server nhận được gói phản hồi `Q` sẽ chuyển đổi thành dạng JSON gửi về web client:
 
 ```json
 {
-  "type": "pong",
+  "type": "q",
   "t": 1718850000000
 }
 ```

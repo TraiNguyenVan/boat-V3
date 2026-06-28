@@ -26,26 +26,30 @@ sequenceDiagram
     participant Server as Node.js Bridge Server
     participant ESP as ESP32 (RC Boat)
 
-    Note over Web,ESP: Phase 1: Registration & Initialization
+    Note over Web,ESP: Phase 1: Registration & Initialization (JSON)
     Web->>Server: {"type": "register", "role": "web"}
     ESP->>Server: {"type": "register", "role": "esp32"}
 
-    Note over Web,ESP: Phase 2: Real-time Control Loop
+    Note over Web,ESP: Phase 2: Real-time Control Loop (Low-Latency Text Packet)
     loop Frequency: 50Hz - 100Hz
-        Web->>Server: {"type": "control", "throttle": 1500, "steering": 1500}
-        Server->>ESP: {"t": 1500, "s": 1500} (Compressed keys)
+        Web->>Server: C1500,1500 (Text)
+        Server->>ESP: C1500,1500 (Direct relay)
     end
 
-    Note over Web,ESP: Phase 3: Heartbeat & Latency Check
-    loop Interval: 1s (1Hz)
-        Web->>Server: {"type": "ping", "t": timestamp}
-        Server->>ESP: {"type": "ping", "t": timestamp}
-        ESP->>Server: {"type": "pong", "t": timestamp}
-        Server->>Web: {"type": "pong", "t": timestamp}
+    Note over Web,ESP: Phase 3: Steering Trim Tuning (Low-Latency Text Packet)
+    Web->>Server: T-20 (Text)
+    Server->>ESP: T-20 (Direct relay)
+
+    Note over Web,ESP: Phase 4: Heartbeat & Latency Check (Text Packets)
+    loop Interval: 500ms (2Hz)
+        Web->>Server: P178129039012 (Text)
+        Server->>ESP: P178129039012 (Direct relay)
+        ESP->>Server: Q178129039012 (Text)
+        Server->>Web: {"type":"q","t":178129039012} (JSON)
         Note over Web: Latency = Date.now() - t
     end
 
-    Note over Web,ESP: Phase 4: GPS Telemetry Loop
+    Note over Web,ESP: Phase 5: GPS Telemetry Loop (JSON)
     loop Interval: 1s (1Hz)
         ESP->>Server: {"type": "gps", "lat": LAT, "lng": LNG}
         Server->>Web: {"type": "gps", "lat": LAT, "lng": LNG}
@@ -92,16 +96,19 @@ boat-v3/
 - **Files**: [server.js](file:///home/trai/stacks/boat-v3/server.js)
 - **Responsibilities**:
   - Authenticate and manage connections by mapping socket state to roles (`web` or `esp32`).
-  - Relay control commands down to the ESP32 and telemetry updates up to the web dashboard.
-  - Perform key-compression to minimize JSON size over cellular/LAN interfaces.
+  - Relay low-latency control commands (`C`, `T`, `P`, `Q` text packets) directly between dashboard and ESP32.
+  - Convert incoming JSON control commands to compact text packets before relaying to ESP32.
+  - Suppress TCP Nagle's algorithm overhead via `ws._socket.setNoDelay(true)` and disable WebSocket compression (`perMessageDeflate: false`) to ensure sub-millisecond network bridging.
+  - Implement congestion control by tracking `ws.bufferedAmount` and dropping older control packets if the queue exceeds 128 bytes.
 
 ### 4.3. ESP32 Firmware (Client)
 - **Files**: [arduino/esp/esp.ino](file:///home/trai/stacks/boat-v3/arduino/esp/esp.ino)
 - **Responsibilities**:
   - Read raw NMEA stream from the NEO-6M GPS module via Serial2 at `9600` baud.
   - Decode telemetry with the `TinyGPSPlus` library.
+  - Maintain a fast, non-JSON text parser to process control (`C`), steering trim (`T`), and ping (`P`) commands without heap allocation or parsing delay.
   - Apply PWM pulse signals to the Speed Controller (ESC) and Steering Servo using the `ESP32Servo` library.
-  - Maintain the WebSocket connection, register itself, and publish telemetry packets.
+  - Implement an adaptive step update loop (`updateServos()`) running at 10ms intervals to smoothly interpolate servo adjustments and eliminate physical jerks.
   - Manage connection state and perform automatic failover switching to the backup server if connection drops consecutively 3 times.
 
 ---
@@ -112,9 +119,9 @@ boat-v3/
 - **Decision**: WebSocket full-duplex TCP connections are used instead of HTTP polling/POST requests.
 - **Rationale**: Gamepad events need to be transmitted at 50-100Hz. Using HTTP would introduce massive overhead from headers and socket handshake setups. WebSockets preserve the connection, bringing latency down to milliseconds.
 
-### 5.2. JSON Key Compression
-- **Decision**: Translate `{"type": "control", "throttle": 1500, "steering": 1500}` into `{"t": 1500, "s": 1500}` at the server level.
-- **Rationale**: Keeps packets short for the ESP32 client, reducing buffer memory allocation issues and decreasing transmission time over low-bandwidth wireless/LTE connections.
+### 5.2. Custom Compact Text Packet Protocol vs JSON
+- **Decision**: Send raw ASCII-delimited packets (`C<throttle_us>,<steering_us>`, `T<trim_us>`, `P<timestamp>`) for real-time control and heartbeats.
+- **Rationale**: Eliminates JSON serialization/deserialization CPU overhead and minimizes payload sizes over wireless or mobile networks, reducing TCP transmission delays and improving responsiveness.
 
 ### 5.3. Servo and ESC Microsecond Control Writes
 - **Decision**: Write microsecond duration signals (`1000µs` - `2000µs`) to servos/ESC rather than write angles (`0` - `180`°).
@@ -128,11 +135,15 @@ boat-v3/
 - An RC boat on open water must stop if communication with the operator is lost.
 - **Solution**: Inside the `webSocketEvent` loop on the ESP32, if a `WStype_DISCONNECTED` event occurs, the firmware immediately writes `1000` microseconds to the ESC pin (`13`) to cut off the motor.
 
-### 6.2. ESC Arming Protocol
+### 6.2. Control Packet Timeout Failsafe
+- Prevents runaway scenarios if the connection remains active but the operator client dashboard crashes or stops transmitting command streams.
+- **Solution**: The ESP32 tracks the duration since the last valid control packet (`lastControlPacketMs`). If the duration exceeds `CONTROL_TIMEOUT_MS = 600` ms, the firmware automatically sets the motor throttle target to safe (`1000` us) and centers the steering rudder target (`1500` us).
+
+### 6.3. ESC Arming Protocol
 - Electronic Speed Controllers require a startup sequence to avoid immediate motor spins.
 - **Solution**: In `setup()`, the ESP32 writes `1000` (neutral low throttle) to the ESC pin and blocks for 4 seconds using `delay(4000)`. Once the ESC plays a long beep (successful arming validation), the ESP32 proceeds to initialize WiFi and WebSocket connection tasks.
 
-### 6.3. WebSocket Server Failover (Auto-switching)
+### 6.4. WebSocket Server Failover (Auto-switching)
 - If the primary local server goes offline (e.g. laptop shut down, local network issue), the boat must switch to a backup server over the internet to restore control capability.
 - **Solution**: The ESP32 tracks the number of consecutive connection failures (`connection_fail_count`) up to `max_fail_threshold = 3`. 
   - Upon reaching the limit, it toggles `using_backup`, flag-schedules a reconnect using `should_switch_server`, and triggers `connectToWebSocket()`.

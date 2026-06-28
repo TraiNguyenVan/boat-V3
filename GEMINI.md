@@ -17,7 +17,7 @@ This file provides context, rules, and guidelines for the Gemini assistant and o
 - [Dockerfile](file:///home/trai/stacks/boat-v3/Dockerfile) / [docker-compose.yml](file:///home/trai/stacks/boat-v3/docker-compose.yml): Deployment configuration.
 
 ## System Architecture & Communication Flow
-The server acts as a low-latency WebSocket bridge between the web dashboard and the ESP32.
+The server acts as a low-latency WebSocket bridge between the web dashboard and the ESP32, bypassing JSON parsing overhead for control and latency loops.
 
 ```mermaid
 sequenceDiagram
@@ -26,22 +26,26 @@ sequenceDiagram
     participant ESP as ESP32 (RC Boat)
 
     Note over Web,ESP: 1. Registration Phase
-    Web->>Server: {"type": "register", "role": "web"}
-    ESP->>Server: {"type": "register", "role": "esp32"}
+    Web->>Server: {"type": "register", "role": "web"} (JSON)
+    ESP->>Server: {"type": "register", "role": "esp32"} (JSON)
 
-    Note over Web,ESP: 2. Control Phase (Web to ESP32)
-    Web->>Server: {"type": "control", "throttle": T, "steering": S}
-    Server->>ESP: {"t": T, "s": S}  (Optimized keys)
+    Note over Web,ESP: 2. Control Phase (Low-Latency Text Packet)
+    Web->>Server: C{throttle},{steering} (Text)
+    Server->>ESP: C{throttle},{steering} (Direct relay)
 
-    Note over Web,ESP: 3. Telemetry Phase (ESP32 to Web)
-    ESP->>Server: {"type": "gps", "lat": LAT, "lng": LNG}
-    Server->>Web: {"type": "gps", "lat": LAT, "lng": LNG}
+    Note over Web,ESP: 3. Trim Adjustment (Low-Latency Text Packet)
+    Web->>Server: T{trim_val} (Text)
+    Server->>ESP: T{trim_val} (Direct relay)
 
-    Note over Web,ESP: 4. Ping/Pong (Latency Measurement)
-    Web->>Server: {"type": "ping", "t": timestamp}
-    Server->>ESP: {"type": "ping", "t": timestamp}
-    ESP->>Server: {"type": "pong", "t": timestamp}
-    Server->>Web: {"type": "pong", "t": timestamp}
+    Note over Web,ESP: 4. Telemetry Phase (ESP32 to Web)
+    ESP->>Server: {"type": "gps", "lat": LAT, "lng": LNG} (JSON)
+    Server->>Web: {"type": "gps", "lat": LAT, "lng": LNG} (JSON)
+
+    Note over Web,ESP: 5. Low-Latency Ping/Pong (Text Packets)
+    Web->>Server: P{timestamp} (Text)
+    Server->>ESP: P{timestamp} (Direct relay)
+    ESP->>Server: Q{timestamp} (Text)
+    Server->>Web: {"type": "q", "t": timestamp} (JSON)
 ```
 
 ## Hardware & Pin Assignments (ESP32)
@@ -53,24 +57,32 @@ sequenceDiagram
   - GPS Serial speed: `9600` baud (configured on HardwareSerial `2`)
 
 ## Protocol Specifications
-1. **Registry Message**:
-   - `{"type": "register", "role": "esp32" | "web"}`
-2. **Control Message (Web Client to Server)**:
-   - `{"type": "control", "throttle": number, "steering": number}`
-3. **Bridge Translation (Server to ESP32)**:
-   - Server translates `throttle` -> `t` and `steering` -> `s` to save network bandwidth:
-     `{"t": throttle_value, "s": steering_value}`
-4. **GPS Telemetry (ESP32 to Server to Web)**:
-   - `{"type": "gps", "lat": double, "lng": double}`
-5. **Ping/Pong (Web to Server to ESP32 & Back)**:
-   - Ping: `{"type": "ping", "t": timestamp}`
-   - Pong: `{"type": "pong", "t": timestamp}`
-   - Web application calculates connection latency by measuring: `Date.now() - t`.
+1. **Registration (JSON)**:
+   - Registry message: `{"type": "register", "role": "esp32" | "web"}`
+2. **Control Packet (Low-Latency Text)**:
+   - Dashboard sends `C<throttle_us>,<steering_us>` (e.g. `C1500,1500`).
+   - Server relays it directly to the ESP32.
+   - If JSON fallback `{"type": "control", "throttle": T, "steering": S}` is received, the server translates it to text packet `C<T>,<S>`.
+3. **Steering Trim Packet (Low-Latency Text)**:
+   - Dashboard sends `T<trim_us>` (e.g. `T-20` or `T+15`).
+   - Server relays it directly to the ESP32.
+   - If JSON fallback `{"type": "trim", "trim": V}` is received, the server translates it to `T<V>`.
+4. **GPS Telemetry (JSON)**:
+   - ESP32 publishes coordinates: `{"type": "gps", "lat": double, "lng": double}`.
+   - Server relays it directly to the dashboard.
+5. **Ping/Pong (Low-Latency Text)**:
+   - Dashboard sends ping: `P<timestamp>` (e.g., `P178129039012`).
+   - ESP32 responds with pong: `Q<timestamp>` (e.g., `Q178129039012`).
+   - Server translates the pong to JSON for the web client: `{"type": "q", "t": timestamp}`.
+   - Dashboard calculates latency: `Date.now() - timestamp`.
 
 ## Important Rules & Constraints
-- **Safety First**: If WebSocket connection to the server is lost (`WStype_DISCONNECTED`), the ESP32 must immediately stop the ESC/motor by writing `1000` microseconds.
-- **ESC Arming Protocol**: In `setup()`, the ESC must be armed before enabling WiFi or performing network operations. Write Neutral/Neutral Low (`1000` microseconds) to ESC and wait 4 seconds.
-- **Server Failover (Primary/Backup)**: The ESP32 implements auto-failover switching between a primary host (`192.168.1.184:3000`) and a backup host (`play.mairapvipproforsure.id.vn:25569`). If connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`), toggle the host and reconnect via `connectToWebSocket()`. Active switching is flagged with `is_switching_server` to avoid false error counting.
-- **Payload Optimization**: Keep JSON messages between ESP32 and Server minimal. Use compressed keys (like `t` and `s`) where necessary.
-- **Leaflet & Mapping**: Zoom controls are disabled on the Leaflet map to provide a clean FPV HUD layout. Always handle cases where GPS signals are not yet locked or home points are not set.
+- **Safety First (Connection Lost)**: If WebSocket connection is lost (`WStype_DISCONNECTED`), the ESP32 must immediately stop the ESC/motor by writing `1000` microseconds.
+- **Safety First (Control Timeout)**: If no control packet is received within `CONTROL_TIMEOUT_MS = 600` ms, the ESP32 must automatically trigger the motor cut-off failsafe and center the rudder.
+- **ESC Arming Protocol**: In `setup()`, write Neutral Low (`1000` microseconds) to ESC and wait 4 seconds before starting WiFi/network connections.
+- **WebSocket NoDelay & Compression**: The server disables Nagle's algorithm (`ws._socket.setNoDelay(true)`) and disables WebSocket compression (`perMessageDeflate: false`) to minimize latency.
+- **Adaptive Step & Smoothing**: The ESP32 updates servos inside `updateServos()` at 10ms intervals. It uses adaptive stepping `constrain(delta / 3, minStep, maxStep)` to smoothly interpolate movements and avoid servo jerks.
+- **Congestion Control**: The server and dashboard track `ws.bufferedAmount` to discard control packets if the buffer exceeds `128` bytes, preventing latency accumulation.
+- **Server Failover (Primary/Backup)**: The ESP32 switches between primary host (`171.242.239.103:3000`) and backup host (`play.mairapvipproforsure.id.vn:25569`) if connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`). Active switching is flagged with `is_switching_server` to avoid false error counting.
 - **Code Language**: Original comments are written in Vietnamese. Preserve the language context and style.
+
