@@ -79,7 +79,7 @@ setInterval(() => {
     if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 512) {
         ws.send(`P${Date.now()}`);
     }
-}, 500);
+}, 1000);
 
 ws.onmessage = (event) => {
     try {
