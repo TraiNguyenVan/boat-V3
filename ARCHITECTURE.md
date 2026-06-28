@@ -71,6 +71,8 @@ boat-v3/
 │   ├── app.js                  # WebSocket, Gamepad API, and Leaflet Map logic
 │   ├── index.html              # FPV HUD UI Layout
 │   └── style.css               # Styling
+├── .dockerignore               # Docker build ignore list
+├── .env.example                # Sample environment configurations
 ├── AGENTS.md                   # Global agent rules
 ├── ARCHITECTURE.md             # This file (System Architecture)
 ├── docker-compose.yml          # Container configuration
@@ -95,6 +97,7 @@ boat-v3/
 ### 4.2. Node.js Relay Server (Backend)
 - **Files**: [server.js](file:///home/trai/stacks/boat-v3/server.js)
 - **Responsibilities**:
+  - Load runtime environment configurations (e.g. `PORT`) dynamically using the `dotenv` package.
   - Authenticate and manage connections by mapping socket state to roles (`web` or `esp32`).
   - Relay low-latency control commands (`C`, `T`, `P`, `Q` text packets) directly between dashboard and ESP32.
   - Convert incoming JSON control commands to compact text packets before relaying to ESP32.

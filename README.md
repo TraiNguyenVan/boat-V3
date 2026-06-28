@@ -4,10 +4,12 @@ Server Node.js cho hệ thống điều khiển thuyền RC và giám sát GPS t
 
 ## Chức năng chính
 
-- Phục vụ giao diện điều khiển tại `http://localhost:3000`.
+- Phục vụ giao diện điều khiển tại `http://localhost:3000` (hoặc cổng cấu hình).
 - Nhận tín hiệu điều khiển từ web và chuyển xuống ESP32.
 - Nhận tọa độ GPS từ ESP32 và chuyển lên web.
 - Chuyển tiếp gói `ping` / `pong` để đo độ trễ kết nối.
+- Cơ chế Tự động chuyển đổi Máy chủ dự phòng (Failover) trên ESP32 để duy trì điều khiển khi mất kết nối.
+- Hỗ trợ container hóa dễ dàng với Docker và Docker Compose.
 
 ## Yêu cầu
 
@@ -83,23 +85,31 @@ Server sẽ được ánh xạ vào cổng đã cấu hình.
 
 ## Cấu hình ESP32
 
-Trong file `arduino/esp/esp.ino`, sửa các giá trị sau cho đúng mạng đang dùng:
+Trong file `arduino/esp/esp.ino`, sửa các giá trị sau để cấu hình mạng và danh sách Server (Primary và Backup):
 
 ```cpp
 const char* ssid = "TEN_WIFI";
 const char* password = "MAT_KHAU_WIFI";
-const char* server_host = "IP_MAY_CHAY_SERVER";
-const int server_port = 3000;
+
+// Danh sách Server (Primary và Backup)
+const char* primary_host = "IP_MAY_CHAY_SERVER_CHINH";
+const int primary_port = 3000;
+
+const char* backup_host = "IP_OR_DOMAIN_SERVER_DU_PHONG";
+const int backup_port = 25569;
 ```
 
-Ví dụ nếu máy chạy server có IP LAN là `192.168.1.184`:
+Ví dụ nếu máy chạy server chính có IP LAN là `192.168.1.184` và server dự phòng trực tuyến là `play.mairapvipproforsure.id.vn`:
 
 ```cpp
-const char* server_host = "192.168.1.184";
-const int server_port = 3000;
+const char* primary_host = "192.168.1.184";
+const int primary_port = 3000;
+
+const char* backup_host = "play.mairapvipproforsure.id.vn";
+const int backup_port = 25569;
 ```
 
-Không dùng `localhost` trong ESP32, vì `localhost` trên ESP32 là chính ESP32 chứ không phải máy tính chạy server.
+Không dùng `localhost` làm host trong ESP32, vì `localhost` trên ESP32 là chính ESP32 chứ không phải máy tính chạy server.
 
 ## Luồng kết nối
 
@@ -198,6 +208,10 @@ Server nhận được gói phản hồi `Q` sẽ chuyển đổi thành dạng 
 │   ├── app.js
 │   ├── index.html
 │   └── style.css
+├── .dockerignore
+├── .env.example
+├── docker-compose.yml
+├── Dockerfile
 ├── package.json
 ├── package-lock.json
 ├── README.md

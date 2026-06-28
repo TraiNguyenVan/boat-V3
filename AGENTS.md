@@ -14,7 +14,8 @@ This file provides context, rules, and guidelines for AI coding agents working o
   - [style.css](file:///home/trai/stacks/boat-v3/public/style.css): Dashboard CSS styles.
   - [app.js](file:///home/trai/stacks/boat-v3/public/app.js): WebSocket connection, gamepad logic, Leaflet map configuration, telemetry calculations.
 - [arduino/esp/esp.ino](file:///home/trai/stacks/boat-v3/arduino/esp/esp.ino): ESP32 firmware code.
-- [Dockerfile](file:///home/trai/stacks/boat-v3/Dockerfile) / [docker-compose.yml](file:///home/trai/stacks/boat-v3/docker-compose.yml): Deployment configuration.
+- [.env.example](file:///home/trai/stacks/boat-v3/.env.example): Environment variable configuration template.
+- [.dockerignore](file:///home/trai/stacks/boat-v3/.dockerignore) / [Dockerfile](file:///home/trai/stacks/boat-v3/Dockerfile) / [docker-compose.yml](file:///home/trai/stacks/boat-v3/docker-compose.yml): Deployment configuration.
 
 ## System Architecture & Communication Flow
 The server acts as a low-latency WebSocket bridge between the web dashboard and the ESP32, bypassing JSON parsing overhead for control and latency loops.
@@ -86,3 +87,13 @@ sequenceDiagram
 - **Server Failover (Primary/Backup)**: The ESP32 switches between primary host (`171.242.239.103:3000`) and backup host (`play.mairapvipproforsure.id.vn:25569`) if connection drops 3 consecutive times (`connection_fail_count >= max_fail_threshold`). Active switching is flagged with `is_switching_server` to avoid false error counting.
 - **Code Language**: Original comments are written in Vietnamese. Preserve the language context and style.
 
+## Post-Feature Change Workflow (Mandatory)
+Whenever a feature change or modification is successfully implemented, the agent **MUST** spin up two subagents using the `invoke_subagent` tool to finalize the task:
+
+1. **Agent 1: Documentation Update**
+   - **Role**: `Documentation Updater`
+   - **Prompt**: "Review the recent codebase changes, identify any modified features, configurations, protocols, or pin assignments. Update all relevant markdown (`.md`) files in the workspace (such as [README.md](file:///home/trai/stacks/boat-v3/README.md), [ARCHITECTURE.md](file:///home/trai/stacks/boat-v3/ARCHITECTURE.md), [GEMINI.md](file:///home/trai/stacks/boat-v3/GEMINI.md), and [AGENTS.md](file:///home/trai/stacks/boat-v3/AGENTS.md)) to accurately reflect the changes. Ensure instructions, sequence diagrams, and architecture guides are fully aligned."
+   
+2. **Agent 2: Solid Commit Creator**
+   - **Role**: `Git Committer`
+   - **Prompt**: "Run git status and git diff to inspect the changes. Compose a high-quality, professional git commit message detailing what changes were made and why, following conventional commits standard. Stage all appropriate files and create a clean git commit."
